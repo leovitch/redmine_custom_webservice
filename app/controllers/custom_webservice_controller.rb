@@ -67,10 +67,10 @@ class CustomWebserviceController < ApplicationController
   # You should be able to test this from the shell with a command like
   # the following (assuming you're testing via mongrel):
   # curl http://0.0:3000/custom_webservice/find_issues_by_custom_field.xml --get \
-  #    key=YOURAPIKEYHERE \
-  #    custom_field_name=External%20Id \
-  #    custom_field_value=T58 \
-  #    project_identifier\=test11
+  #    --data key=YOURAPIKEYHERE \
+  #    --data custom_field_name=External%20Id \
+  #    --data custom_field_value=T58 \
+  #    --data project_identifier\=test11
   def find_issues_by_custom_field
     # Conveniently, custom field values are all strings so no type conversion needed
     issues = Issue.all :joins => { :custom_values => [ :custom_field, ], },
@@ -104,7 +104,6 @@ class CustomWebserviceController < ApplicationController
   #    --data subject=YOURSUBJECTHERE \
   #    --data status_name=Closed
   def update_issue_status
-    puts "update_issue_status: entry subject is #{params[:subject]}"
     issues = Issue.all :conditions => { :project_id => @project.id,
                                         :tracker_id => @tracker.id,
                                         :subject => params[:subject] }
@@ -128,8 +127,6 @@ class CustomWebserviceController < ApplicationController
               if !issue.current_journal
                 issue.init_journal
               end
-              puts "update_issue_status: issue is #{issue}"
-              puts "update_issue_status: issue.current_journal is #{issue.current_journal}"
               Mailer.deliver_issue_edit(issue.current_journal)
             end
             respond_to do |format|
@@ -163,10 +160,8 @@ protected
   end
   
   def find_project_by_id_or_identifier
-    puts "find_project_by_id_or_identifier: entry project_identifier is #{params[:project_identifier]}, project_id is #{params[:project_id]}"
     if params.has_key? :project_identifier
         @project = Project.find_by_identifier(params[:project_identifier])
-        puts "find_project_by_id_or_identifier: project set to #{@project}."
     else
       find_project
     end
@@ -175,13 +170,10 @@ protected
   end
   
   def find_tracker_by_id_or_name
-    puts "find_tracker_by_id_or_name: entry tracker_id is #{params[:tracker_id]}, tracker_name is #{params[:tracker_name]}"
     if params.has_key? :tracker_id
       @tracker = Tracker.find(params[:project_identifier])
-      puts "find_tracker_by_id_or_name: tracker-by-id set to #{@tracker}."
     elsif params.has_key? :tracker_name
       @tracker = Tracker.find_by_name(params[:tracker_name])
-      puts "find_tracker_by_id_or_name: tracker-by-name set to #{@tracker}."
     else
       render_missing "tracker_name"
     end
@@ -190,13 +182,10 @@ protected
   end
   
   def find_status_by_id_or_name
-    puts "find_status_by_id_or_name: entry status_id is #{params[:status_id]}, status_name is #{params[:status_name]}"
     if params.has_key? :status_id
       @status = IssueStatus.find(params[:project_identifier])
-      puts "find_status_by_id_or_name: status-by-id set to #{@status}."
     elsif params.has_key? :status_name
       @status = IssueStatus.find_by_name(params[:status_name])
-      puts "find_status_by_id_or_name: status-by-name set to #{@status}."
     else
       render_missing "status_name"
     end
