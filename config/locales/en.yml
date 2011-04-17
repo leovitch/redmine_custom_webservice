@@ -1,0 +1,5 @@
+en:
+  label_custom_webservice: "Custom Webservices"
+  error_cws_missing_param: "Malformed query, value #{missing} not found"
+  error_cws_ambiguous_query: "Multiple matching objects were found"
+
