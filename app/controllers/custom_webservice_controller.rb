@@ -124,9 +124,6 @@ class CustomWebserviceController < ApplicationController
           issue.status = @status
           if issue.save
             if Setting.notified_events.include?('issue_updated')
-              if !issue.current_journal
-                issue.init_journal
-              end
               Mailer.deliver_issue_edit(issue.current_journal)
             end
             respond_to do |format|
