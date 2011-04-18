@@ -10,7 +10,9 @@ class CustomWebserviceController < ApplicationController
 
   # Remember to add all your authenticated actions to this list
   # (that's all of them, right?).
-  # Unfortunately accept_key_auth doesn't have an :except parameter, so they must be listed out.
+  # Unfortunately accept_key_auth doesn't have an :except parameter, 
+  # so they must all be listed here rather than just before each
+  # action.
   accept_key_auth :auth_echo, :find_issues_by_custom_field, :update_issue_status
   
   # Make sure to restrict your actions to appropriate HTML verbs.
@@ -20,6 +22,11 @@ class CustomWebserviceController < ApplicationController
   verify :method => :post,
          :only => [ :update_issue_status, ],
          :render => { :nothing => true, :status => :method_not_allowed }
+
+  # And finally, our common param-fetching before_filters:
+  before_filter :find_project_by_identifier, :only => [ :find_issues_by_custom_field, :update_issue_status, ]
+  before_filter :find_tracker_by_name, :only => :update_issue_status
+  before_filter :find_status_by_name, :only => :update_issue_status
   
   # Just a query that returns a constant string.
   # You should be able to test this from the shell with a command like
@@ -58,12 +65,11 @@ class CustomWebserviceController < ApplicationController
     end
   end
 
-  before_filter :find_project_by_id_or_identifier, :only => :find_issues_by_custom_field
   # Finally, a real example of why you might want to do this:
   # a simple web service that finds an issue via a query on an
   # (single) arbitrary custom field.  The HTTP GET request must have
   # parameters custom_field_name and custom_field_value,
-  # and either project_id or project_identifier.
+  # and project_identifier.
   # You should be able to test this from the shell with a command like
   # the following (assuming you're testing via mongrel):
   # curl http://0.0:3000/custom_webservice/find_issues_by_custom_field.xml --get \
@@ -83,17 +89,14 @@ class CustomWebserviceController < ApplicationController
     end
   end
   
-  before_filter :find_project_by_id_or_identifier, :only => :update_issue_status
-  before_filter :find_tracker_by_id_or_name, :only => :update_issue_status
-  before_filter :find_status_by_id_or_name, :only => :update_issue_status
   # Here's a POST-style example:  this action finds an issue
   # based on project, tracker, and subject.  If exactly
   # one issue is found, it updates the status to the given
   # status.  Parameters must include:
-  # - project_id or project_identifier
-  # - tracker_id or tracker_name
+  # - project_identifier
+  # - tracker_name
   # - subject
-  # - status_id or status_name
+  # - status_name
   #  
   # You should be able to test this from the shell with a command like
   # the following (assuming you're testing via mongrel):
@@ -151,50 +154,27 @@ protected
 
   # Overridden from ActiveController to allow API requests without triggering the form forgery
   # code.  Note that this means you should only run custom_webservices on the LAN
-  # or via https.
+  # or via https: anyone who snoops your packets can forge requests.
   def verify_authenticity_token
     true
   end
   
-  def find_project_by_id_or_identifier
-    if params.has_key? :project_identifier
-        @project = Project.find_by_identifier(params[:project_identifier])
-    else
-      find_project
-    end
+  def find_project_by_identifier
+    @project = Project.find_by_identifier(params[:project_identifier])
   rescue ActiveRecord::RecordNotFound
     render_404
   end
   
-  def find_tracker_by_id_or_name
-    if params.has_key? :tracker_id
-      @tracker = Tracker.find(params[:project_identifier])
-    elsif params.has_key? :tracker_name
-      @tracker = Tracker.find_by_name(params[:tracker_name])
-    else
-      render_missing "tracker_name"
-    end
+  def find_tracker_by_name
+    @tracker = Tracker.find_by_name(params[:tracker_name])
   rescue ActiveRecord::RecordNotFound
     render_404
   end
   
-  def find_status_by_id_or_name
-    if params.has_key? :status_id
-      @status = IssueStatus.find(params[:project_identifier])
-    elsif params.has_key? :status_name
-      @status = IssueStatus.find_by_name(params[:status_name])
-    else
-      render_missing "status_name"
-    end
+  def find_status_by_name
+    @status = IssueStatus.find_by_name(params[:status_name])
   rescue ActiveRecord::RecordNotFound
     render_404
-  end
-  
-  # A needed argument was missing
-  def render_missing (missing)
-    @project = nil
-    render_error({:message => :error_cws_missing_param, 
-                  :status => 400}) 
   end
   
 end
