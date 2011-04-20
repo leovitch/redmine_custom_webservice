@@ -13,18 +13,21 @@ class CustomWebserviceController < ApplicationController
   # Unfortunately accept_key_auth doesn't have an :except parameter, 
   # so they must all be listed here rather than just before each
   # action.
-  accept_key_auth :auth_echo, :find_issues_by_custom_field, :update_issue_status
+  accept_key_auth :auth_echo, :find_issues_by_custom_field, :update_issue_status,
+    :assignable_users_by_project
   
   # Make sure to restrict your actions to appropriate HTML verbs.
   verify :method => :get,
-         :only => [ :simple, :echo, :auth_echo, :find_issues_by_custom_field, ],
+         :only => [ :simple, :echo, :auth_echo, :find_issues_by_custom_field, 
+                    :assignable_users_by_project, ],
          :render => { :nothing => true, :status => :method_not_allowed }
   verify :method => :post,
          :only => [ :update_issue_status, ],
          :render => { :nothing => true, :status => :method_not_allowed }
 
   # And finally, our common param-fetching before_filters:
-  before_filter :find_project_by_identifier, :only => [ :find_issues_by_custom_field, :update_issue_status, ]
+  before_filter :find_project_by_identifier, :only => [ :find_issues_by_custom_field, 
+    :assignable_users_by_project, :update_issue_status, ]
   before_filter :find_tracker_by_name, :only => :update_issue_status
   before_filter :find_status_by_name, :only => :update_issue_status
   
@@ -86,6 +89,31 @@ class CustomWebserviceController < ApplicationController
     respond_to do |format|
       format.json { render :json => issues }
       format.xml { render :xml => issues }
+    end
+  end
+  
+  # Another real-world example (something you could do with the REST
+  # API, if it was fully fleshed-out):  the logins of all assignable users
+  # for a particular project.  The HTTP GET request must have
+  # parameter project_identifier.
+  # You should be able to test this from the shell with a command like
+  # the following (assuming you're testing via mongrel):
+  # curl http://0.0:3000/custom_webservice/assignable_users_by_project.xml --get \
+  #    --data key=YOURAPIKEYHERE \
+  #    --data project_identifier\=test11
+  def assignable_users_by_project
+    assignable = @project.assignable_users
+    # If we just return that, we'll be exposing the email addys etc.
+    # To be a little cagier about it, we only return the logins 
+    # by re-querying with a :select parameter
+    # We could also do this simply by writing a view to return
+    # only the desired information, but that would be a lot more code
+    # because we'd need a view per format.
+    assignable = User.all(:conditions => { :id => assignable.collect { |au| au.id }, },
+                          :select => "login" )
+    respond_to do |format|
+      format.json { render :json => assignable }
+      format.xml { render :xml => assignable }
     end
   end
   
@@ -161,20 +189,23 @@ protected
   
   def find_project_by_identifier
     @project = Project.find_by_identifier(params[:project_identifier])
-  rescue ActiveRecord::RecordNotFound
-    render_404
+    if !@project
+      render_404
+    end
   end
   
   def find_tracker_by_name
     @tracker = Tracker.find_by_name(params[:tracker_name])
-  rescue ActiveRecord::RecordNotFound
-    render_404
+    if !@tracker
+      render_404
+    end
   end
   
   def find_status_by_name
     @status = IssueStatus.find_by_name(params[:status_name])
-  rescue ActiveRecord::RecordNotFound
-    render_404
+    if !@status
+      render_404
+    end
   end
   
 end
