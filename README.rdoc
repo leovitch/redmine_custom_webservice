@@ -25,14 +25,13 @@ This plugin installs normally:
    * RAILS_ENV=production ruby script/server
 1. Go to the Administration > Settings > Authentication page and make sure the box "Enable REST Web Service" is on.
 1. For testing, log in as the admin user, go to the "My Account" page, and copy the API key.  You'll need it for testing.
+1. Some of the samples are project-specific.  For the projects you want to test, go to the project > Settings > Modules page and enable "Custom Web Services".
 1. Now you can test the samples from the shell using curl (or wget).  See the class documentation for CustomWebserviceController.
 1. Once you see how the samples work, delete those actions and make some useful new actions of your own.
    * You'll probably find custom_webservice/app/controllers/custom_webservice_controller.rb is the only file you need to modify.
+1. Once you've got the tests working, you'll want to make a separate user for the API accesses.  Unfortunately, it's not practical to make a non-admin user at the moment.
 1. If you deploy web services based on this plugin, here are a couple points to be aware of.
    1. Be sure to delete the non-authenticated actions at the top of the controller.  They're only there to help you understand and try out some simple actions.
-   1. For a non-admin user to use these web services, they must have the "Access Custom Web Services" permission.
-      * You'll probably want to create a new Role called Robots or some such, that has only the needed permissions for your application.
-      * Most of the Redmine ActiveRecord classes (Issue, Project, etc.) do enforce the permission bits, so be sure to give your Robot role all the appropriate permissions like "add issue", "edit issue", and so on.
    1. In general, to avoid POST forgeries, API keys are only secure if used over https or on a totally trusted LAN segment.
 
 

@@ -1,6 +1,8 @@
 
 
 class CustomWebserviceController < ApplicationController
+  skip_before_filter :check_if_login_required
+
   # Must use global auth to avoid requiring a separate permission for every action
   before_filter :authorize_global, :except => [ :simple, :echo, :auth_echo ]
   
